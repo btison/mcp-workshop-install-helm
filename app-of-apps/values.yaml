@@ -1,0 +1,62 @@
+global:
+  kafka:
+    name: &kafka kafka
+    namespace: &kafkanamespace kafka
+    kafka-cluster: &kafkacluster
+      bootstrapServer: kafka-kafka-bootstrap.kafka.svc.cluster.local:9092
+      securityProtocol: SASL_PLAINTEXT
+      saslMechanism: SCRAM-SHA-512
+      clientId: globex
+      clientSecret: globex
+
+amqstreams:
+  enabled: true
+  applicationName: amqstreams
+  applicationNamespace: openshift-gitops
+  destinationNamespace: kafka
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: amq-streams
+    helm:
+      values:
+        kafka:
+          enabled: true
+        console:
+          enabled: true
+
+        kafka-broker:
+          namespace: *kafkanamespace
+          nameOverride: *kafka
+          kafka:
+            controller:
+              enabled: true
+            listener:
+              external:
+                tls:
+                  secret:
+                    value:
+                      crt: 
+                      key: 
+          authentication:
+            clientId: admin
+            clientSecret: adminpassword
+            securityProtocol: SASL_PLAINTEXT
+            saslMechanism: SCRAM-SHA-512
+        amq-streams-console:
+          namespace: *kafkanamespace
+          subdomain: 
+          kafka:
+            name: *kafka
+            namespace: *kafkanamespace
+            authentication:
+              securityProtocol: SASL_SSL
+              saslMechanism: SCRAM-SHA-512
+            authorization: simple
+        kafka-topics:
+          kafka:
+            namespace: *kafkanamespace
+            cluster: *kafka
+  argocd:
+    enabled: true
+    syncwave: "1"
