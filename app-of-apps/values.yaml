@@ -81,3 +81,55 @@ keycloak:
   argocd:
     enabled: true
     syncwave: "1"
+
+globex:
+  enabled: true
+  applicationName: globex
+  applicationNamespace: openshift-gitops
+  destinationNamespace: globex
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: globex
+    helm:
+      values:
+        kafka-broker:
+          namespace: *kafkanamespace
+          nameOverride: *kafka
+
+        kafka-topics:
+          kafka:
+            namespace: *kafkanamespace
+            cluster: *kafka
+        globex-db:
+          pgsql:
+            adminPassword: adminpassword
+
+        keycloak-realmimport-globex:
+          namespace: keycloak
+          keycloak:
+            name: keycloak
+          realm:
+            name: globex
+          client:
+            gateway:
+              name: globex-web-gateway
+
+        globex-web:
+          sso:
+            authServer:
+            realm: globex
+            client: globex-web-gateway
+          subdomain:
+
+        activity-tracking:
+          kafka:
+            <<: *kafkacluster
+
+        recommendation-engine:
+          kafka:
+            <<: *kafkacluster
+
+  argocd:
+    enabled: true
+    syncwave: "3"
