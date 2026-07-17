@@ -133,3 +133,21 @@ globex:
   argocd:
     enabled: true
     syncwave: "3"
+
+noobaa:
+  enabled: true
+  applicationName: noobaa
+  applicationNamespace: openshift-gitops
+  destinationNamespace: openshift-storage
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: noobaa
+    helm:
+      values:
+        noobaa:
+          nameOverride: noobaa
+
+  argocd:
+    enabled: true
+    syncwave: "1"
