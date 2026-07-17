@@ -1,0 +1,41 @@
+{{- if .Values.vault.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.vault.applicationName }}
+  namespace: {{ .Values.vault.applicationNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.vault.argocd.syncwave }}"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  destination:
+    namespace: {{ .Values.vault.destinationNamespace }}
+    server: 'https://kubernetes.default.svc'
+  project: default
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions: 
+        - '.webhooks[]?.clientConfig.caBundle'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m0s
+      limit: 10
+    syncOptions:
+      - CreateNamespace=true
+  source:
+    repoURL: {{ .Values.vault.source.repoUrl }}
+    targetRevision: {{ .Values.vault.source.targetRevision }}
+    path: {{ .Values.vault.source.path }}
+    helm:
+      valuesObject:
+        {{ toYaml .Values.vault.source.helm.values | nindent 8 }}
+{{- end }}
