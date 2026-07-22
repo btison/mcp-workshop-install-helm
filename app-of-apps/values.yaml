@@ -153,7 +153,7 @@ noobaa:
     syncwave: "1"
 
 vault:
-  enabled: true
+  enabled: false
   applicationName: vault
   applicationNamespace: openshift-gitops
   destinationNamespace: vault
@@ -198,3 +198,46 @@ quay:
   argocd:
     enabled: true
     syncwave: "2"
+
+gitlab:
+  enabled: true
+  applicationName: gitlab
+  applicationNamespace: openshift-gitops
+  destinationNamespace: gitlab
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: gitlab
+    helm:
+      values:
+        gitlab:
+          rootPassword:
+          users:
+            password:
+          host:
+          smtp:
+            host:
+          ssh:
+            host:
+  argocd:
+    enabled: true
+    syncwave: "3"
+
+
+ocp4_workload_platform_engineering_workshop_gitlab_namespace: gitlab
+
+ocp4_workload_platform_engineering_workshop_gitlab_gitops_repo: https://github.com/btison/agnosticg.git
+ocp4_workload_platform_engineering_workshop_gitlab_gitops_repo_path: charts/gitlab
+ocp4_workload_platform_engineering_workshop_gitlab_gitops_repo_tag: configured
+ocp4_workload_platform_engineering_workshop_gitlab_gitops_name: gitlab
+ocp4_workload_platform_engineering_workshop_gitlab_gitops_namespace: openshift-gitops
+
+ocp4_workload_platform_engineering_workshop_gitlab_config_smtp_host:
+  smtp.gitlab-{{ ocp4_workload_platform_engineering_workshop_gitlab_namespace }}.{{ r_openshift_subdomain }}
+ocp4_workload_platform_engineering_workshop_gitlab_config_ssh_host:
+  ssh.gitlab-{{ ocp4_workload_platform_engineering_workshop_gitlab_namespace }}.{{ r_openshift_subdomain }}
+ocp4_workload_platform_engineering_workshop_gitlab_config_root_password: "{{ common_password }}"
+ocp4_workload_platform_engineering_workshop_gitlab_config_host:
+  "gitlab-{{ ocp4_workload_platform_engineering_workshop_gitlab_namespace }}.{{ r_openshift_subdomain }}"
+
+ocp4_workload_platform_engineering_workshop_gitlab_users_password: "{{ common_password }}"
