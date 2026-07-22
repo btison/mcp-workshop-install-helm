@@ -136,6 +136,7 @@ data:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
             validate_certs: false
             status_code: 201
+            register: r_group_create
           when: r_group_check.status == 404
 
         - name: Set group fact for {{ $item.name }}
