@@ -14,9 +14,6 @@ data:
         root_password: {{ $.Values.gitlab.rootPassword }}
         user_create: true
       tasks:
-        - name: Pause for 5 minutes waiting for GitLab
-          ansible.builtin.pause:
-            minutes: 5
 
         - name: Check GitLab Liveness
           ansible.builtin.uri:
@@ -24,8 +21,8 @@ data:
             method: GET
             validate_certs: false
           register: r_liveness
-          retries: 60
-          delay: 10
+          retries: 40
+          delay: 15
           until: r_liveness.status == 200
 
         - name: Generate root user personal token
@@ -35,6 +32,10 @@ data:
             ROOT_PAT=$(oc exec $POD -n {{ $.Release.Namespace }} -- /bin/sh -c "cat /tmp/root.pat")
             oc delete secret root-user-personal-token -n {{ $.Release.Namespace }} --ignore-not-found
             oc create secret generic root-user-personal-token --from-literal=token=$ROOT_PAT -n {{ $.Release.Namespace }}
+          register: r_generate_token
+          retries: 40
+          delay: 15
+          until: r_generate_token.rc == 0
 
         - name: Retrieve root token
           kubernetes.core.k8s_info:
@@ -43,11 +44,15 @@ data:
             name: root-user-personal-token
             namespace: '{{ "{{" }} gitlab_namespace {{ "}}" }}'
           register: r_root_token
-          failed_when: r_root_token.resources[0].data.token | length == 0
+          retries: 40
+          delay: 15
+          until:
+            - r_root_token.resources | length > 0
+            - r_root_token.resources[0].data.token | length > 0
 
-        - name:
+        - name: Debug root token retrieval
           debug:
-            var: r_root_token
+            msg: "Successfully retrieved root token from secret"
 
         - name: Decode root token
           set_fact:
@@ -62,10 +67,18 @@ data:
               import_sources: "git,github,gitea"
               version_check_enabled: "false"
               allow_local_requests_from_web_hooks_and_services: "true"
+              auto_devops_enabled: "false"
+              throttle_unauthenticated_enabled: "false"
+              throttle_authenticated_api_enabled: "false"
+              throttle_authenticated_web_enabled: "false"
             headers:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
             validate_certs: false
             status_code: 200
+          register: r_app_settings
+          retries: 40
+          delay: 15
+          until: r_app_settings.status == 200
 
 {{- range $item := .Values.gitlab.users.users }}
 
@@ -85,11 +98,13 @@ data:
             headers:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
             validate_certs: false
-            status_code: 201
+            status_code:
+              - 201  # Created
+              - 409  # Conflict - user already exists
           register: r_user
-          retries: 100
-          delay: 5
-          until: r_user.status == 201
+          retries: 40
+          delay: 15
+          until: r_user.status in [201, 409]
 {{- end }}
 
         - name: List users
@@ -101,8 +116,26 @@ data:
             validate_certs: false
             status_code: 200
           register: r_users
+          retries: 40
+          delay: 15
+          until: r_users.status == 200
 
 {{- range $item := .Values.gitlab.groups }}
+
+        - name: Check if group {{ $item.name }} exists
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/groups/{{ $item.name }}
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code:
+              - 200  # Group exists
+              - 404  # Group does not exist
+          register: r_group_check
+          retries: 40
+          delay: 15
+          until: r_group_check.status in [200, 404]
 
         - name: Create group
           ansible.builtin.uri:
@@ -117,12 +150,30 @@ data:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
             validate_certs: false
             status_code: 201
-          register: r_group
-          retries: 100
-          delay: 5
-          until: r_group.status == 201
+          register: r_group_create
+          retries: 40
+          delay: 15
+          until: r_group_create.status == 201
+          when: r_group_check.status == 404
+
+        - name: Set group fact for {{ $item.name }}
+          set_fact:
+            r_group: '{{ "{{" }} r_group_create if r_group_check.status == 404 else r_group_check {{ "}}" }}'
 
 {{- if $item.repo }}
+
+        - name: List projects in group {{ $item.name }}
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/groups/{{ "{{" }} r_group.json.id {{ "}}" }}/projects?per_page=100
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: 200
+          register: r_group_projects
+          retries: 40
+          delay: 15
+          until: r_group_projects.status == 200
 
         - name: Import repository to group
           ansible.builtin.uri:
@@ -140,11 +191,13 @@ data:
             headers:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
             validate_certs: false
-            status_code: 201
-          retries: 100
-          delay: 5
+            status_code:
+              - 201  # Created
+              - 400  # Bad request - might already exist
+          retries: 40
+          delay: 15
           register: r_import
-          until: r_import.status == 201
+          until: r_import.status in [201, 400]
           loop:
 {{- range $item1 := $item.repo }}
             - name: {{ $item1.name }}
@@ -170,11 +223,13 @@ data:
             headers:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
             validate_certs: false
-            status_code: 201
-          retries: 100
-          delay: 5
+            status_code:
+              - 201  # Created
+              - 400  # Bad request - might already exist
+          retries: 40
+          delay: 15
           register: r_create_project
-          until: r_create_project.status == 201
+          until: r_create_project.status in [201, 400]
 
 {{- if $item1.labels }}
 
@@ -217,12 +272,14 @@ data:
               access_level: 50
             headers:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
-            validate_certs: false
-            status_code: 201
+            validate_certs: falser_group_user.status == 201
+            status_code:
+              - 201  # Created
+              - 409  # Conflict - already a member
           register: r_group_user
-          retries: 100
-          delay: 5
-          until: r_group_user.status == 201
+          retries: 40
+          delay: 15
+          until: r_group_user.status in [201, 409]
           loop: '{{ "{{" }} r_users.json {{ "}}" }}'
 {{- end }}
 {{- end }}
