@@ -241,7 +241,7 @@ data:
               access_level: 50
             headers:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
-            validate_certs: falser_group_user.status == 201
+            validate_certs: false
             status_code:
               - 201  # Created
               - 409  # Conflict - already a member
