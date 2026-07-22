@@ -198,3 +198,27 @@ quay:
   argocd:
     enabled: true
     syncwave: "2"
+
+gitlab:
+  enabled: true
+  applicationName: gitlab
+  applicationNamespace: openshift-gitops
+  destinationNamespace: gitlab
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: gitlab
+    helm:
+      values:
+        gitlab:
+          rootPassword:
+          users:
+            password:
+          host:
+          smtp:
+            host:
+          ssh:
+            host:
+  argocd:
+    enabled: true
+    syncwave: "2"
