@@ -191,9 +191,6 @@ quay:
             adminUser: admin
             adminUserPassword: 
             organizations:
-          vault:
-            name: vault
-            namespace: vault
           noobaa:
             name: noobaa
             namespace: openshift-storage
