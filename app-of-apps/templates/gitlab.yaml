@@ -1,0 +1,37 @@
+{{- if .Values.gitlab.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.gitlab.applicationName }}
+  namespace: {{ .Values.gitlab.applicationNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.gitlab.argocd.syncwave }}"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  destination:
+    name: ""
+    namespace: {{ .Values.gitlab.destinationNamespace }}
+    server: 'https://kubernetes.default.svc'
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m0s
+      limit: 10
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+  source:
+    repoURL: {{ .Values.gitlab.source.repoUrl }}
+    targetRevision: {{ .Values.gitlab.source.targetRevision }}
+    path: {{ .Values.gitlab.source.path }}
+    helm:
+      valuesObject:
+        {{ toYaml .Values.gitlab.source.helm.values | nindent 8 }}
+{{- end }}

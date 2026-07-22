@@ -1,0 +1,256 @@
+kind: ConfigMap
+metadata:
+  name:  cm-init-gitlab
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+apiVersion: v1
+data:
+  playbook.yaml: |
+    ---
+    - name: Configure GitLab
+      hosts: localhost
+      vars:
+        gitlab_namespace: {{ $.Release.Namespace }}
+        root_password: {{ $.Values.gitlab.rootPassword }}
+        user_create: true
+      tasks:
+
+        - name: Check GitLab Liveness
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/projects
+            method: GET
+            validate_certs: false
+          register: r_liveness
+          retries: 40
+          delay: 15
+          until: r_liveness.status == 200
+
+        - name: Check if root token secret exists
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Secret
+            name: root-user-personal-token
+            namespace: {{ $.Release.Namespace }}
+          register: r_token_check
+
+        - name: Generate root user personal token
+          shell: |
+            POD=$(oc get pod -l app=gitlab -n gitlab --no-headers | awk '{print $1}')
+            oc exec $POD -n {{ $.Release.Namespace }} -- /bin/sh -c /scripts/create-root-pat.sh
+            ROOT_PAT=$(oc exec $POD -n {{ $.Release.Namespace }} -- /bin/sh -c "cat /tmp/root.pat")
+            oc delete secret root-user-personal-token -n {{ $.Release.Namespace }} --ignore-not-found
+            oc create secret generic root-user-personal-token --from-literal=token=$ROOT_PAT -n {{ $.Release.Namespace }}
+          when: r_token_check.resources | length == 0
+
+        - name: Retrieve root token
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Secret
+            name: root-user-personal-token
+            namespace: '{{ "{{" }} gitlab_namespace {{ "}}" }}'
+          register: r_root_token
+
+        - name: Debug root token retrieval
+          debug:
+            msg: "Successfully retrieved root token from secret"
+
+        - name: Decode root token
+          set_fact:
+            root_token: '{{ "{{" }} r_root_token.resources[0].data.token | b64decode {{ "}}" }}'
+
+        - name: Update application settings
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/application/settings
+            method: PUT
+            body_format: form-urlencoded
+            body:
+              import_sources: "git,github,gitea"
+              version_check_enabled: "false"
+              allow_local_requests_from_web_hooks_and_services: "true"
+              auto_devops_enabled: "false"
+              throttle_unauthenticated_enabled: "false"
+              throttle_authenticated_api_enabled: "false"
+              throttle_authenticated_web_enabled: "false"
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: 200
+
+{{- range $item := .Values.gitlab.users.users }}
+
+        - name: Create users
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/users
+            method: POST
+            body_format: form-urlencoded
+            body:
+              admin: false
+              email: {{ $item.id }}@rhdemo.com
+              public_email: {{ $item.id }}@rhdemo.com
+              skip_confirmation: true
+              username: {{ $item.id }}
+              password: {{ include "gitlab-user.password" $ }}
+              name: {{ $item.id }} GitLab
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code:
+              - 201  # Created
+              - 409  # Conflict - user already exists
+{{- end }}
+
+        - name: List users
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/users?per_page=100
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: 200
+          register: r_users
+
+{{- range $item := .Values.gitlab.groups }}
+
+        - name: Check if group {{ $item.name }} exists
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/groups/{{ $item.name }}
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code:
+              - 200  # Group exists
+              - 404  # Group does not exist
+          register: r_group_check
+
+        - name: Create group
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/groups
+            method: POST
+            body_format: form-urlencoded
+            body:
+              name: {{ $item.name }}
+              path: {{ $item.name }}
+              visibility: public
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: 201
+          register: r_group_create
+          when: r_group_check.status == 404
+
+        - name: Set group fact for {{ $item.name }}
+          set_fact:
+            r_group: '{{ "{{" }} r_group_create if r_group_check.status == 404 else r_group_check {{ "}}" }}'
+
+{{- if $item.repo }}
+
+        - name: List projects in group {{ $item.name }}
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/groups/{{ "{{" }} r_group.json.id {{ "}}" }}/projects?per_page=100
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: 200
+          register: r_group_projects
+          when: {{ ($item.repo | default (list) | len) }} > 0
+
+        - name: Import repository to group {{ $item.name }}
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/projects
+            method: POST
+            body_format: form-urlencoded
+            body:
+              name: '{{ "{{" }} item.name {{ "}}" }}'
+              import_url: '{{ "{{" }} item.url {{ "}}" }}'
+              visibility: public
+              builds_access_level: enabled
+              auto_devops_enabled: false
+              only_allow_merge_if_pipeline_succeeds: '{{ "{{" }} item.checkPipeline {{ "}}" }}'
+              namespace_id: '{{ "{{" }} r_group.json.id {{ "}}" }}'
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code:
+              - 201  # Created
+              - 400  # Bad request - might already exist
+          loop:
+{{- range $item1 := $item.repo }}
+            - name: {{ $item1.name }}
+              url: {{ $item1.url }}
+              checkPipeline: {{ include "gitlab.repo.check-pipeline" $item1 }}
+{{- end }}
+{{- end }}
+
+{{- if $item.project }}
+{{- range $item1 := $item.project }}
+
+        - name: Create project for group
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/projects
+            method: POST
+            body_format: form-urlencoded
+            body:
+              name: {{ $item1.name }}
+              visibility: public
+              issues_access_level: enabled
+              auto_devops_enabled: false
+              namespace_id: '{{ "{{" }} r_group.json.id {{ "}}" }}'
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code:
+              - 201  # Created
+              - 400  # Bad request - might already exist
+
+{{- if $item1.labels }}
+
+        - name: Create labels in project
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/projects/{{ "{{" }} r_create_project.json.id {{ "}}" }}/labels
+            method: POST
+            body_format: form-urlencoded
+            body:
+              name: '{{ "{{" }} item.name {{ "}}" }}'
+              color: '{{ "{{" }} item.color {{ "}}" }}'
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code: 201
+          loop:
+{{- range $item2 := $item1.labels }}
+            - name: {{ $item2.name }}
+              color: {{ $item2.color }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if $item.users }}
+{{- range $item1 := $item.users }}
+
+        - name: Add user to group
+          when: item.username == '{{ $item1.id }}'
+          ansible.builtin.uri:
+            url: https://{{ $.Values.gitlab.host }}/api/v4/groups/{{ "{{" }} r_group.json.id {{ "}}" }}/members
+            method: POST
+            body_format: form-urlencoded
+            body:
+              user_id: '{{ "{{" }} item.id {{ "}}" }}'
+              access_level: 50
+            headers:
+              PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
+            validate_certs: false
+            status_code:
+              - 201  # Created
+              - 409  # Conflict - already a member
+          register: r_group_user
+          loop: '{{ "{{" }} r_users.json {{ "}}" }}'
+{{- end }}
+{{- end }}
+{{- end }}
+
+        - name: Set webhook secret
+          ansible.builtin.set_fact:
+            webhook_secret: "{{ "{{" }} lookup('password', '/dev/null chars=ascii_lowercase length=12') {{ "}}" }}"
