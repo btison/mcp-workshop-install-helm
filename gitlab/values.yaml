@@ -28,7 +28,9 @@ gitlab:
     password: 
   groups:
     - name: globex
-      repo: []
+      repo:
+        - name: globex-store-mcp
+          url: https://github.com/btison/mcp-workshop-globex-store-mcp.git  
       users:
         - id: developer
       project:
