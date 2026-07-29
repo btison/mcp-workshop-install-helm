@@ -85,12 +85,12 @@ data:
             body_format: form-urlencoded
             body:
               admin: false
-              email: {{ $item.id }}@rhdemo.com
-              public_email: {{ $item.id }}@rhdemo.com
+              email: {{ $item.id }}@example.com
+              public_email: {{ $item.id }}@example.com
               skip_confirmation: true
               username: {{ $item.id }}
               password: {{ include "gitlab-user.password" $ }}
-              name: {{ $item.id }} GitLab
+              name: {{ $item.id | camelcase }} Doe
             headers:
               PRIVATE-TOKEN: '{{ "{{" }} root_token {{ "}}" }}'
             validate_certs: false
