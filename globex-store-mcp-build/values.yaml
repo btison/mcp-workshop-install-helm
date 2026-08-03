@@ -1,0 +1,19 @@
+job:
+  copyGitlabToken:
+    image:
+      repository: quay.io/btison/kubernetes-copy-secret-job
+      pullPolicy: IfNotPresent
+      tag: "b21432f"
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+
+gitlab:
+  namespace:
+  tokenSecret:
