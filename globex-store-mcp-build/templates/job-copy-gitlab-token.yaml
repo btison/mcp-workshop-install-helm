@@ -4,6 +4,8 @@ metadata:
   name: copy-gitlab-token
   labels:
     {{- include "globex-store-mcp-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.job.copyGitlabToken.argocd.syncwave }}"
 spec:
   selector: {}
   template:

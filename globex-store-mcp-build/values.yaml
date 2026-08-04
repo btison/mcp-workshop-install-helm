@@ -13,6 +13,8 @@ job:
       capabilities:
         drop:
           - ALL
+    argocd:
+      syncwave: -2
 
 gitlab:
   namespace:
