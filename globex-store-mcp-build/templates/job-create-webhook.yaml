@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-webhook
+  labels:
+    {{- include "globex-store-mcp-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.job.createWebhook.argocd.syncwave }}"
+spec:
+  backoffLimit: 100
+  template:
+    spec:
+      securityContext:
+        {{- toYaml .Values.job.createWebhook.podSecurityContext | nindent 8 }}
+      containers:
+        - name: create-webhook
+          securityContext:
+            {{- toYaml .Values.job.createWebhook.securityContext | nindent 12 }}
+          image: "{{ .Values.job.createWebhook.image.repository }}:{{ .Values.job.createWebhook.image.tag }}"
+          imagePullPolicy: {{ .Values.job.createWebhook.image.pullPolicy }}
+          command:
+            - /bin/bash
+            - '-c'
+            - |
+              set -x
+              ansible-playbook -i localhost /scripts/playbook.yaml -e git_token=$(cat /tokens/token)
+          volumeMounts:
+            - mountPath: /scripts
+              name: create-webhook-script-vol
+            - mountPath: /tokens
+              name: git-token
+      restartPolicy: Never
+      volumes:
+        - name: create-webhook-script-vol
+          configMap:
+            name: create-webhook-script
+        - name: git-token
+          secret:
+            secretName: {{ .Values.gitlab.tokenSecret }}

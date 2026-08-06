@@ -251,6 +251,11 @@ globexStoreMcpBuild:
         gitlab:
           namespace: gitlab
           tokenSecret: root-user-personal-token
+          host:
+          repo: globex-store-mcp
+          webhookSecret:
+        cluster:
+          subdomain:
   argocd:
     enabled: true
     syncwave: "3"

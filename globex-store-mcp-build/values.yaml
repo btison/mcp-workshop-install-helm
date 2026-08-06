@@ -15,7 +15,29 @@ job:
           - ALL
     argocd:
       syncwave: -2
+  createWebhook:
+    image:
+      repository: quay.io/agnosticd/ee-multicloud
+      pullPolicy: IfNotPresent
+      tag: "latest"
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+    argocd:
+      syncwave: -1
 
 gitlab:
   namespace:
   tokenSecret:
+  host:
+  repo:
+  webhookSecret:
+
+cluster:
+  subdomain:
