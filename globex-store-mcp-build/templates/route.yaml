@@ -1,0 +1,22 @@
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: {{ include "globex-store-mcp-build.name" . }}-el
+  labels:
+    app.kubernetes.io/managed-by: EventListener
+    app.kubernetes.io/part-of: Triggers
+    eventlistener: {{ include "globex-store-mcp-build.name" . }}-el
+    {{- include "globex-store-mcp-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.pipeline.argocd.syncwave }}"
+spec:
+  to:
+    kind: Service
+    name: el-{{ include "globex-store-mcp-build.name" . }}-el
+    weight: 100
+  port:
+    targetPort: http-listener
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge

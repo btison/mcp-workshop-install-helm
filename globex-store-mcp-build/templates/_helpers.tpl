@@ -60,3 +60,14 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Image Url image will be pushed to defaults to internal registry
+*/}}
+{{- define "image.dev-url" -}}
+{{- if eq .registry "Quay" }}
+{{- printf "%s/%s/%s" .Values.image.host .Values.image.organization .Values.image.name }}
+{{- else }}
+{{- printf "%s/%s/%s" .Values.image.host .Release.Namespace .Values.image.name }}
+{{- end }}
+{{- end }}

@@ -252,10 +252,21 @@ globexStoreMcpBuild:
           namespace: gitlab
           tokenSecret: root-user-personal-token
           host:
+          group: globex
           repo: globex-store-mcp
+          branch: main
           webhookSecret:
         cluster:
           subdomain:
+        image:
+          registry: OpenShift
+          organization: ""
+          host: image-registry.openshift-image-registry.svc:5000
+          name: globex-store-mcp
+          tag: latest
+        resync:
+          namespace: globex-store-mcp
+          label: globex-store-mcp
   argocd:
     enabled: true
     syncwave: "3"

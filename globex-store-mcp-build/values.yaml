@@ -32,12 +32,30 @@ job:
     argocd:
       syncwave: -1
 
+pipeline:
+  argocd:
+    syncwave: 0
+
 gitlab:
   namespace:
   tokenSecret:
   host:
+  group:
   repo:
+  branch: main
   webhookSecret:
 
 cluster:
   subdomain:
+
+image:
+  dockerfile: ./src/main/docker/Dockerfile.jvm
+  registry: ""
+  organization: ""
+  host: ""
+  name: ""
+  tag: ""
+
+resync:
+  namespace:
+  label:
