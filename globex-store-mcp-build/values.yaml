@@ -34,7 +34,7 @@ job:
 
 pipeline:
   argocd:
-    syncwave: 0
+    syncwave: 1
 
 gitlab:
   namespace:
@@ -59,3 +59,5 @@ image:
 resync:
   namespace:
   label:
+  argocd:
+    syncwave: 0
