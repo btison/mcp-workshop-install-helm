@@ -1,0 +1,37 @@
+{{- if .Values.globexStoreMcp.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.globexStoreMcp.applicationName }}
+  namespace: {{ .Values.globexStoreMcp.applicationNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.globexStoreMcp.argocd.syncwave }}"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  destination:
+    name: ""
+    namespace: {{ .Values.globexStoreMcp.destinationNamespace }}
+    server: 'https://kubernetes.default.svc'
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m0s
+      limit: 10
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+  source:
+    repoURL: {{ .Values.globexStoreMcp.source.repoUrl }}
+    targetRevision: {{ .Values.globexStoreMcp.source.targetRevision }}
+    path: {{ .Values.globexStoreMcp.source.path }}
+    helm:
+      valuesObject:
+        {{ toYaml .Values.globexStoreMcp.source.helm.values | nindent 8 }}
+{{- end }}

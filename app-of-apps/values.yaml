@@ -270,3 +270,24 @@ globexStoreMcpBuild:
   argocd:
     enabled: true
     syncwave: "3"
+
+globexStoreMcp:
+  enabled: true
+  applicationName: globex-store-mcp
+  applicationNamespace: openshift-gitops
+  destinationNamespace: globex-store-mcp
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: globex-store-mcp
+    helm:
+      values:
+        route:
+          host:
+        image:
+          repository: image-registry.openshift-image-registry.svc:5000/globex-store-mcp-build/globex-store-mcp
+          tag: latest
+          pullPolicy: Always
+  argocd:
+    enabled: true
+    syncwave: "4"
