@@ -288,6 +288,9 @@ globexStoreMcp:
           repository: image-registry.openshift-image-registry.svc:5000/globex-store-mcp-build/globex-store-mcp
           tag: latest
           pullPolicy: Always
+        roleBinding:
+          imagePull:
+            namespace: globex-store-mcp-build
   argocd:
     enabled: true
     syncwave: "4"

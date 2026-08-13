@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "globex-store-mcp.name" . }}-image-puller
+  labels:
+    {{- include "globex-store-mcp.labels" . | nindent 4 }}
+  namespace: {{ .Values.roleBinding.imagePull.namespace }}
+
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: 'system:image-puller'
+subjects:
+- apiGroup: ""
+  kind: ServiceAccount
+  name: {{ include "globex-store-mcp.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}

@@ -115,3 +115,7 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+roleBinding:
+  imagePull:
+    namespace:
