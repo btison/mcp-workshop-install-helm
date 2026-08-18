@@ -30,7 +30,9 @@ gitlab:
     - name: globex
       repo:
         - name: globex-store-mcp
-          url: https://github.com/btison/mcp-workshop-globex-store-mcp.git  
+          url: https://github.com/btison/mcp-workshop-globex-store-mcp.git
+        - name: globex-complaints
+          url: https://github.com/btison/mcp-workshop-globex-complaints.git
       users:
         - id: developer
       project:
