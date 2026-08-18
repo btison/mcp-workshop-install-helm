@@ -1,0 +1,27 @@
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: {{ include "globex-complaints-build.name" . }}-el
+  labels:
+    {{- include "globex-complaints-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.pipeline.argocd.syncwave }}"
+spec:
+  serviceAccountName: pipeline
+  triggers:
+    - bindings:
+        - kind: TriggerBinding
+          ref: {{ include "globex-complaints-build.name" . }}-trigger
+      interceptors:
+        - params:
+            - name: filter
+              value: has(body.commits) && body.object_kind == 'push'
+            - name: overlays
+              value: null
+          ref:
+            kind: ClusterInterceptor
+            name: cel
+      name: {{ include "globex-complaints-build.name" . }}-trigger
+      template:
+        ref: {{ include "globex-complaints-build.name" . }}-template

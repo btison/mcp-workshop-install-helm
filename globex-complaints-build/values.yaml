@@ -1,0 +1,63 @@
+job:
+  copyGitlabToken:
+    image:
+      repository: quay.io/btison/kubernetes-copy-secret-job
+      pullPolicy: IfNotPresent
+      tag: "b21432f"
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+    argocd:
+      syncwave: -2
+  createWebhook:
+    image:
+      repository: quay.io/agnosticd/ee-multicloud
+      pullPolicy: IfNotPresent
+      tag: "latest"
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+    argocd:
+      syncwave: -1
+
+pipeline:
+  argocd:
+    syncwave: 1
+
+gitlab:
+  namespace:
+  tokenSecret:
+  host:
+  group:
+  repo:
+  branch: main
+  webhookSecret:
+
+cluster:
+  subdomain:
+
+image:
+  dockerfile: ./src/main/docker/Dockerfile.jvm
+  registry: ""
+  organization: ""
+  host: ""
+  name: ""
+  tag: ""
+
+resync:
+  namespace:
+  label:
+  argocd:
+    syncwave: 0
