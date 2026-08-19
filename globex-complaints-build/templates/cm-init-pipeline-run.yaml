@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trigger-pipeline-run
+  labels:
+    {{- include "globex-complaints-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.job.triggerPipelineRun.argocd.syncwave }}"
+data:
+  trigger-pipeline.yaml: |
+    apiVersion: tekton.dev/v1
+    kind: PipelineRun
+    metadata:
+      generateName: {{ include "globex-complaints-build.name" . }}-pipeline-
+      labels:
+        {{- include "globex-complaints-build.labels" . | nindent 8 }}
+    spec:
+      params:
+        - name: source-repo
+          value:  https://{{ .Values.gitlab.host }}/{{ .Values.gitlab.group }}/{{ .Values.gitlab.repo }}.git
+        - name: source-branch
+          value: {{ .Values.gitlab.branch }}
+        - name: output-image
+          value: {{ include "image.dev-url" . }}
+      pipelineRef:
+        name: {{ include "globex-complaints-build.name" . }}-pipeline
+      taskRunTemplate:
+        serviceAccountName: pipeline
+      timeouts:
+        pipeline: 1h0m0s
+      workspaces:
+        - name: source-folder
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 1Gi
+        - emptyDir: {}
+          name: maven-settings
+{{- if eq .Values.image.registry "Quay" }}
+        - name: docker-config
+          secret:
+            secretName: quay-registry-creds
+{{- else }}
+        - name: docker-config
+          emptyDir: {}
+{{- end }}

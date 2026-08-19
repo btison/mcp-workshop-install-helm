@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trigger-pipeline-run
+  labels:
+    {{- include "globex-complaints-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.job.triggerPipelineRun.argocd.syncwave }}"
+spec:
+  backoffLimit: 100
+  template:
+    metadata:
+      name: trigger-pipeline-run
+    spec:
+      securityContext:
+        {{- toYaml .Values.job.triggerPipelineRun.podSecurityContext | nindent 8 }}
+      containers:
+        - name: trigger-pipeline-run
+          securityContext:
+            {{- toYaml .Values.job.triggerPipelineRun.securityContext | nindent 12 }}
+          image: "{{ .Values.job.triggerPipelineRun.image.repository }}:{{ .Values.job.triggerPipelineRun.image.tag }}"
+          imagePullPolicy: {{ .Values.job.triggerPipelineRun.image.pullPolicy }}
+          command:
+            - /bin/bash
+          args:
+            - '-ec'
+            - >-
+              oc create -f /scripts/trigger-pipeline.yaml
+          volumeMounts:
+            - mountPath: /scripts
+              name: trigger-pipeline-run-script-vol
+      restartPolicy: OnFailure
+      serviceAccountName: pipeline
+      volumes:
+      - name: trigger-pipeline-run-script-vol
+        configMap:
+          name: trigger-pipeline-run
+
