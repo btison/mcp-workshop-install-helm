@@ -3,7 +3,7 @@ job:
     image:
       repository: quay.io/btison/kubernetes-copy-secret-job
       pullPolicy: IfNotPresent
-      tag: "b21432f"
+      tag: "03eb796"
     podSecurityContext:
       runAsNonRoot: true
       seccompProfile:
