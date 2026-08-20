@@ -103,6 +103,9 @@ globex:
             cluster: *kafka
         globex-db:
           pgsql:
+            user: globex
+            password: globex
+            database: globex
             adminPassword: adminpassword
 
         keycloak-realmimport-globex:
@@ -328,3 +331,33 @@ globexComplaintsBuild:
   argocd:
     enabled: true
     syncwave: "3"
+
+globexComplaints:
+  enabled: true
+  applicationName: globex-complaints
+  applicationNamespace: openshift-gitops
+  destinationNamespace: globex-complaints
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: globex-complaints
+    helm:
+      values:
+        route:
+          host:
+        image:
+          repository: image-registry.openshift-image-registry.svc:5000/globex-complaints-build/globex-complaints
+          tag: latest
+          pullPolicy: Always
+        roleBinding:
+          imagePull:
+            namespace: globex-complaints-build
+        globexDb:
+          host: globex-db.globex.svc.cluster.local
+          port: "5432"
+          database: globex
+          user: globex
+          password: globex
+  argocd:
+    enabled: true
+    syncwave: "4"

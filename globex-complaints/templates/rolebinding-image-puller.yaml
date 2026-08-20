@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "globex-complaints.name" . }}-image-puller
+  labels:
+    {{- include "globex-complaints.labels" . | nindent 4 }}
+  namespace: {{ .Values.roleBinding.imagePull.namespace }}
+
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: 'system:image-puller'
+subjects:
+- apiGroup: ""
+  kind: ServiceAccount
+  name: {{ include "globex-complaints.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
