@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "globex-complaint-agent.name" . }}
+  labels:
+    {{- include "globex-complaint-agent.labels" . | nindent 4 }}
+  annotations:
+    {{- include "globex-complaint-agent.argocd-syncwave" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.containerPort }}
+      protocol: TCP
+      name: {{ .Values.service.portName }}
+  selector:
+    {{- include "globex-complaint-agent.selectorLabels" . | nindent 4 }}

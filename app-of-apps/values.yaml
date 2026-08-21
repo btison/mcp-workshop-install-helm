@@ -124,6 +124,8 @@ globex:
             realm: globex
             client: globex-web-gateway
           subdomain:
+          globexAgent:
+            url: http://globex-complaint-agent.globex-complaint-agent.svc.cluster.local:8080
 
         activity-tracking:
           kafka:
@@ -395,3 +397,39 @@ globexComplaintAgentBuild:
   argocd:
     enabled: true
     syncwave: "3"
+
+globexComplaintAgent:
+  enabled: true
+  applicationName: globex-complaint-agent
+  applicationNamespace: openshift-gitops
+  destinationNamespace: globex-complaint-agent
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: globex-complaint-agent
+    helm:
+      values:
+        route:
+          host:
+        image:
+          repository: image-registry.openshift-image-registry.svc:5000/globex-complaint-agent-build/globex-complaint-agent
+          tag: latest
+          pullPolicy: Always
+        roleBinding:
+          imagePull:
+            namespace: globex-complaint-agent-build
+        oidc:
+          authServerUrl:
+          realm: globex
+          clientId: globex-web-gateway
+          clientSecret:
+        llm:
+          complaint:
+            modelName:
+            apiKey:
+            baseUrl:
+        cors:
+          enabled: true
+  argocd:
+    enabled: true
+    syncwave: "4"
