@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: copy-gitlab-token
+  labels:
+    {{- include "globex-complaint-agent-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.job.copyGitlabToken.argocd.syncwave }}"
+spec:
+  selector: {}
+  template:
+    metadata:
+      name: copy-gitlab-token
+    spec:
+      serviceAccountName: copy-gitlab-token
+      securityContext:
+        {{- toYaml .Values.job.copyGitlabToken.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.job.copyGitlabToken.securityContext | nindent 12 }}
+          image: "{{ .Values.job.copyGitlabToken.image.repository }}:{{ .Values.job.copyGitlabToken.image.tag }}"
+          imagePullPolicy: {{ .Values.job.copyGitlabToken.image.pullPolicy }}
+          env:
+            - name: SOURCE_NAMESPACE
+              value: {{ .Values.gitlab.namespace }}
+            - name: SOURCE_SECRET
+              value: {{ .Values.gitlab.tokenSecret }}
+            - name: TARGET_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace          
+      restartPolicy: Never

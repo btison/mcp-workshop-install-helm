@@ -361,3 +361,37 @@ globexComplaints:
   argocd:
     enabled: true
     syncwave: "4"
+
+globexComplaintAgentBuild:
+  enabled: true
+  applicationName: globex-complaint-agent-build
+  applicationNamespace: openshift-gitops
+  destinationNamespace: globex-complaint-agent-build
+  source:
+    repoUrl: https://github.com/btison/mcp-workshop-install-helm.git
+    targetRevision: main
+    path: globex-complaint-agent-build
+    helm:
+      values:
+        gitlab:
+          namespace: gitlab
+          tokenSecret: root-user-personal-token
+          host:
+          group: globex
+          repo: globex-complaint-agent
+          branch: main
+          webhookSecret:
+        cluster:
+          subdomain:
+        image:
+          registry: OpenShift
+          organization: ""
+          host: image-registry.openshift-image-registry.svc:5000
+          name: globex-complaint-agent
+          tag: latest
+        resync:
+          namespace: globex-complaint-agent
+          label: globex-complaint-agent
+  argocd:
+    enabled: true
+    syncwave: "3"

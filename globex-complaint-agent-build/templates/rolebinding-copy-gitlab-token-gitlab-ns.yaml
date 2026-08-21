@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: copy-gitlab-token-{{ .Release.Namespace }}
+  namespace: {{ .Values.gitlab.namespace }}
+  labels:
+    {{- include "globex-complaint-agent-build.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ .Values.job.copyGitlabToken.argocd.syncwave }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- apiGroup: ""
+  kind: ServiceAccount
+  name: copy-gitlab-token
+  namespace: {{ .Release.Namespace }}
