@@ -33,6 +33,8 @@ gitlab:
           url: https://github.com/btison/mcp-workshop-globex-store-mcp.git
         - name: globex-complaints
           url: https://github.com/btison/mcp-workshop-globex-complaints.git
+        - name: globex-complaint-agent
+          url: https://github.com/btison/mcp-workshop-globex-complaint-agent.git
       users:
         - id: developer
       project:
